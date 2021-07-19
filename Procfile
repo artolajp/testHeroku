@@ -1,1 +1,1 @@
-web: ./build/install/artola-test/bin/artola-test
+web: ./build/install/creating-http-api-ktor/bin/creating-http-api-ktor
