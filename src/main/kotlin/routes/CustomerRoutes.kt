@@ -7,6 +7,10 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import models.Customer
 import models.customerStorage
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.transaction
+import persistence.CustomersTable
 
 fun Application.registerCustomerRoutes() {
     routing {
@@ -34,7 +38,7 @@ fun Route.customerRouting() {
             )
 
             val customer =
-                customerStorage.find { it.id == id } ?: return@get call.respondText(
+                customerStorage.find { it.id == id.toInt() } ?: return@get call.respondText(
                     "No customer with id $id",
                     status = HttpStatusCode.NotFound
                 )
@@ -46,7 +50,16 @@ fun Route.customerRouting() {
         post {
             val customer = call.receive<Customer>()
 
-            customerStorage.add(customer)
+            transaction {
+                val customerID = CustomersTable.insert {
+                    it[firstName] = customer.firstName
+                    it[lastName] = customer.lastName
+                    it[email] = customer.email
+                } get CustomersTable.id
+
+                customerStorage.add(Customer(customerID.value, customer.firstName, customer.lastName, customer.email))
+
+            }
 
             call.respondText("Customer stored correctly", status = HttpStatusCode.Accepted)
         }
@@ -55,8 +68,11 @@ fun Route.customerRouting() {
         delete("{id}") {
             val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)
 
-            if (customerStorage.removeIf { it.id == id }) {
+            if (customerStorage.removeIf { it.id == id.toInt() }) {
                 call.respondText("Customer removed correctly", status = HttpStatusCode.Accepted)
+                transaction {
+                    CustomersTable.deleteWhere { CustomersTable.id eq id.toInt() }
+                }
             } else {
                 call.respondText("Not Found", status = HttpStatusCode.NotFound)
             }

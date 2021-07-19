@@ -2,9 +2,14 @@ package routes
 
 import io.ktor.application.*
 import io.ktor.http.*
+import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import models.orderStorage
+import models.*
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.transaction
+import persistence.OrderItemsTable
+import persistence.OrdersTable
 
 fun Application.registerOrderRoutes() {
 
@@ -12,6 +17,7 @@ fun Application.registerOrderRoutes() {
         listOrdersRoute()
         getOrderRoute()
         totalizeOrderRoute()
+        newOrderRoute()
     }
 
 }
@@ -24,6 +30,38 @@ fun Route.listOrdersRoute() {
         }
     }
 
+}
+
+fun Route.newOrderRoute(){
+
+    post("/order"){
+
+        val orderRetrived = call.receive<Order>()
+
+        transaction {
+
+            val orderID = OrdersTable.insert {
+            } get OrdersTable.id
+
+            var items = mutableListOf<OrderItem>()
+
+            for (itemOrder in orderRetrived.contents) {
+                val itemID = OrderItemsTable.insert {
+                    it[amount] = itemOrder.amount
+                    it[price] = itemOrder.price.toBigDecimal()
+                    it[item] = itemOrder.item
+                    it[order] = orderID.value
+                }get OrderItemsTable.id
+
+                items.add(OrderItem(itemID.toString(),itemOrder.amount,itemOrder.price))
+            }
+
+            orderStorage.add(Order(orderID.toString(), items))
+
+        }
+
+        call.respondText("Customer stored correctly", status = HttpStatusCode.Accepted)
+    }
 }
 
 fun Route.getOrderRoute() {
