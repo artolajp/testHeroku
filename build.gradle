@@ -29,6 +29,11 @@ dependencies {
     implementation("org.postgresql:postgresql:42.2.23")
 }
 
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
