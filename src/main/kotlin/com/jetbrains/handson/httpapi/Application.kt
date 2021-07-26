@@ -69,8 +69,10 @@ fun Application.module() {
                 for (frame in incoming) {
                     frame as? Frame.Text ?: continue
                     val receivedText = frame.readText()
-                    val textWithUsername = "[${thisConnection.name}]: $receivedText"
                     connections.forEach {
+                        val textWithUsername =
+                            if (it.name != thisConnection.name) "[${thisConnection.name}]: $receivedText"
+                            else "[you]: $receivedText"
                         it.session.send(textWithUsername)
                     }
                 }
